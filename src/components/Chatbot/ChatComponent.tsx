@@ -137,11 +137,6 @@ export const ChatComponent = () => {
                       />
                     </div>
                   )}
-                  {/* Debug: Show raw LLM text below the rendered markdown */}
-                  <div className="mt-2 p-2 bg-gray-100 text-xs text-black rounded">
-                    <strong>Raw LLM Output:</strong>
-                    <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{entry.content}</pre>
-                  </div>
                 </CardContent>
               </Card>
             </div>
