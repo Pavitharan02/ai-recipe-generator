@@ -1,0 +1,31 @@
+export interface IngredientRow {
+  NDB_No: string;
+  Descrip: string;
+  Energy_kcal: string;
+  Protein_g: string;
+  Saturated_fats_g: string;
+  Fat_g: string;
+  Carb_g: string;
+  Fiber_g: string;
+  Sugar_g: string;
+  Calcium_mg: string;
+  Iron_mg: string;
+  Magnesium_mg: string;
+  Phosphorus_mg: string;
+  Potassium_mg: string;
+  Sodium_mg: string;
+  Zinc_mg: string;
+  Copper_mcg: string;
+  Manganese_mg: string;
+  Selenium_mcg: string;
+  VitC_mg: string;
+  Thiamin_mg: string;
+  Riboflavin_mg: string;
+  Niacin_mg: string;
+  VitB6_mg: string;
+  Folate_mcg: string;
+  VitB12_mcg: string;
+  VitA_mcg: string;
+  VitE_mg: string;
+  VitD2_mcg: string;
+}
