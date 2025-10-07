@@ -1,4 +1,4 @@
-# AI Recipe Assistant
+# AI Meal Planner
 
 A desktop application that provides a clean interface for generating personalized recipes using Ollama's AI models locally. Create delicious recipes based on available ingredients with dietary preferences and nutritional information, all without needing internet connectivity after initial setup.
 

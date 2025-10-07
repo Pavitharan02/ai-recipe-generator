@@ -70,7 +70,7 @@ export const ChatProvider = ({ children }: any) => {
   // Language support
   const availableLanguages = [
     "English",
-    "Swahili", 
+    "Swahili",
     "Luganda",
     "Lango",
     "Acholi",
@@ -80,7 +80,26 @@ export const ChatProvider = ({ children }: any) => {
     "Runyoro-Kitara",
     "Lusoga",
     "Ateso",
-    "Lubwisi"
+    "Lubwisi",
+    "Kinyarwanda",
+    "Kirundi",
+    "Chichewa",
+    "Shona",
+    "Zulu",
+    "Xhosa",
+    "Tswana",
+    "Sesotho",
+    "Amharic",
+    "Oromo",
+    "Somali",
+    "Tigrinya",
+    "Wolof",
+    "Fula",
+    "Hausa",
+    "Yoruba",
+    "Igbo",
+    "Akan",
+    "Lingala"
   ];
   const [currentLanguage, setCurrentLanguage] = useLocalStorage("currentLanguage", "English");
   
@@ -99,7 +118,8 @@ export const ChatProvider = ({ children }: any) => {
   You are a helpful culinary assistant and recipe generator. 
   Create delicious, practical recipes based on the ingredients users provide. 
   For each recipe, include Recipe Title, Ingredients list with quantities in 
-  a table, Cooking instructions, Estimated cooking time (only total time) and Nutritional information (calories, protein, carbs, fat, fiber etc.) in a table format.
+  a table, Cooking instructions, Estimated cooking time (only total time) 
+  and Nutritional information (calories, protein, carbs, fat, fiber, vitamins and minerals) in a table.
   
   If any of the provided ingredients conflict with the user's selected dietary preferences or restrictions (for example, sugar for diabetes), DO NOT generate a recipe yet. Instead, list each conflicting ingredient and suggest at least two suitable alternative ingredients for each conflict. Ask the user to select one alternative for each conflicting ingredient. Wait for the user's selection before generating the recipe. Once the user selects the alternatives, use those in the recipe and add a note below the ingredients table about the substitutions made, in the format: "Note: [original ingredient] was replaced with [alternative] due to [dietary preference]."
   `;

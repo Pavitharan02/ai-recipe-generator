@@ -196,7 +196,7 @@ export const ChatbotWelcome = () => {
     <div className="absolute left-0 right-0 top-0 bottom-32 flex items-center justify-center">
       <div className="text-center flex flex-col gap-6 px-8">
         <h1 className="text-4xl md:text-5xl font-bold break-words whitespace-pre-wrap" style={{color: '#08acb3'}}>
-          AI Recipe Assistant
+          My Meal Planner
         </h1>
         <p className="max-w-[600px] mx-auto text-center text-lg md:text-xl break-words whitespace-pre-wrap text-muted-foreground leading-relaxed">
           Your intelligent culinary companion for creating delicious recipes with whatever ingredients you have on hand. 

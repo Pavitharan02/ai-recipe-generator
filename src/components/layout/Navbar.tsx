@@ -12,7 +12,7 @@ export const Navbar = () => {
           <Link to="/" className="flex items-center justify-between mr-4">
             {/* <img src="/images/logo.png" className="mr-3 h-8" alt="App Logo" /> */}
             <span className="self-center text-xl font-semibold whitespace-nowrap text-black">
-              AI Recipe Assistant
+              AI Meal Planner
             </span>
           </Link>
         </div>
