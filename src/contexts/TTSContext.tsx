@@ -54,7 +54,7 @@ export const TTSProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Clean the text for TTS (remove markdown formatting)
       const cleanText = text
-        .replace(/[#*`_~\[\]]/g, '') // Remove markdown formatting
+        .replace(/[#*`_~[\]]/g, '') // Remove markdown formatting
         .replace(/\n+/g, ' ') // Replace newlines with spaces
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
         .replace(/\*\*/g, '') // Remove bold markdown

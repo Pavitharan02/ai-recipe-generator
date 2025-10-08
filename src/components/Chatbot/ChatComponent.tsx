@@ -7,51 +7,33 @@ import { useEffect, useRef } from "react";
 import { ChatInput } from "./ChatInput";
 import { MobileRecipePanel } from "@/components/Recipe/MobileRecipePanel";
 import { TTSButton } from "@/components/common/TTSButton";
-import MDEditor from '@uiw/react-md-editor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 // Markdown cleaning function
 function cleanLLMMarkdown(raw: string) {
   let text = raw;
   // Remove setext-style heading underlines (lines of only '=' or '-' at least 3 long)
   text = text.replace(/^\s*[=-]{3,}\s*$/gm, '');
-  // Remove trailing inline '=====' or '---' after text, even if followed by more markdown (e.g., 'Cheesy Egg Bites===============## Ingredients:')
-  text = text.replace(/([\w\)])\s*[=-]{3,}(?=\s|#|$)/g, '$1');
+  // Remove trailing inline '=====' or '---' after text
+  text = text.replace(/([^\n])\s*[=-]{3,}(?=\s*#|$)/g, '$1');
 
-  // Ensure bold headings (e.g., **Heading:**) are always surrounded by blank lines, even if consecutive
-  text = text.replace(/\*\*([^\*]+?:)\*\*/g, '\n\n**$1**\n\n');
+  // Ensure bold headings have blank lines around them
+  text = text.replace(/\*\*([^*]+?:)\*\*/g, '\n\n**$1**\n\n');
 
-  // Add blank line after markdown tables so following text is not included in the table
-  // Find lines that start with '|' and are followed by a line that does not start with '|', and insert a blank line
-  text = text.replace(/((?:^|\n)(?:\|.+\|\n)+)([^\|\n])/gm, '$1\n$2');
+  // Add blank line after markdown tables
+  text = text.replace(/((?:^|\n)(?:\|.+\|\n)+)([^|\n])/gm, '$1\n$2');
 
-  // Split + into new lines for ingredients
-  text = text.replace(/\+ ?/g, "\n- ");
+  // Handle concatenated numbered lists - split when a number+period follows text
+  text = text.replace(/([a-zA-Z])(\d+\.\s)/g, '$1\n$2');
 
-  // Handle Alternative1:, Alternative2: patterns - split them into separate bullet points
-  text = text.replace(/\*?\s*Alternative(\d+):/g, '\n- Alternative$1:');
-  
-  // Handle concatenated numbered lists - split when a number+period follows text without newline
-  text = text.replace(/([a-zA-Z\s])(\d+\.\s)/g, '$1\n$2');
-  
-  // Handle text that gets concatenated without spaces - add line breaks before capital letters that start sentences
-  text = text.replace(/([a-z])([A-Z][a-z])/g, '$1\n\n$2');
-
-  // Ensure numbered steps have line breaks, but do NOT break numbers in tables (e.g., 3.5g)
-  // Only add line breaks before numbers at the start of a line or after whitespace, not after a table pipe
-  text = text.replace(/(^|\s)(\d\.)/g, (match, p1, p2) => {
-    // If the previous character is a pipe (|), don't add a line break
-    if (p1.endsWith('|')) return match;
-    return `${p1}\n${p2} `;
-  });
-
-  // Add line breaks before markdown tables (lines starting with |)
-  text = text.replace(/(\n)?(\|.+\|)/g, "\n$2");
-
-  // Add line breaks before headings (###, ##, #)
-  text = text.replace(/(#+ )/g, "\n$1");
+  // Fix concatenated text (split on lowercase followed immediately by uppercase)
+  text = text.replace(/([a-z])([A-Z])/g, '$1\n\n$2');
 
   // Remove duplicate empty lines
-  text = text.replace(/\n{3,}/g, "\n\n");
+  text = text.replace(/\n{3,}/g, '\n\n');
 
   // Trim leading/trailing spaces
   return text.trim();
@@ -61,16 +43,35 @@ function cleanLLMMarkdown(raw: string) {
 const MarkdownRenderer = ({ content }: { content: string }) => {
   const cleanedContent = cleanLLMMarkdown(content);
   
+  // Debug: print raw text
+  console.log('Raw content:', content);
+  console.log('Cleaned content:', cleanedContent);
+  
   return (
     <div className="markdown-content">
-      <MDEditor.Markdown 
-        source={cleanedContent}
-        style={{ 
-          backgroundColor: 'transparent',
-          color: 'inherit'
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+        components={{
+          table: ({ children }) => (
+            <table className="border-collapse border border-gray-300 my-4">
+              {children}
+            </table>
+          ),
+          th: ({ children }) => (
+            <th className="border border-gray-300 px-4 py-2 bg-gray-100">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border border-gray-300 px-4 py-2">
+              {children}
+            </td>
+          ),
         }}
-        data-color-mode="auto"
-      />
+      >
+        {cleanedContent}
+      </ReactMarkdown>
     </div>
   );
 };
