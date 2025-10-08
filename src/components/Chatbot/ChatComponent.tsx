@@ -80,6 +80,13 @@ function cleanLLMMarkdown(raw: string) {
   // E.g., "**Time:**\n5 minutes\n**Next**" should become "**Time:**\n5 minutes\n\n**Next**"
   text = text.replace(/(\*\*[^*]+\*\*[:\s]*\n)([^\n]+\n)(\*\*[^*]+\*\*)/g, '$1$2\n$3');
 
+  // **NEW: Add paragraph break after underscores followed by uppercase letter (new sentence)**
+  // This handles cases like "_____ Once I receive" -> "_____ \n\nOnce I receive"
+  text = text.replace(/(_+)(\s*)([A-Z][a-z])/g, '$1\n\n$3');
+
+  // **NEW: Add paragraph break after underscores followed by parenthesis (Note:, etc.)**
+  text = text.replace(/(_+)(\s*)(\([A-Z])/g, '$1\n\n$3');
+
   // Remove duplicate empty lines
   text = text.replace(/\n{3,}/g, '\n\n');
 
