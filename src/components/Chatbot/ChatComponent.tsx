@@ -12,32 +12,81 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
-// Markdown cleaning function
 function cleanLLMMarkdown(raw: string) {
   let text = raw;
-  // Remove setext-style heading underlines (lines of only '=' or '-' at least 3 long)
+  
+  // Ensure line break only after bullet list items, not numbered lists
+  text = text.replace(/(^\* [^*\n]+[.!?)])\s+(?=[A-Z0-9(])/gm, '$1\n\n');
+
+  // Add space after colon in bold heading if followed by text (not table)
+  text = text.replace(/(\*\*[^*]+\*\*):([^\n|])/g, '$1: $2');
+
+  // Split ## heading if it contains a table (|), so heading is separate
+  text = text.replace(/(##[^\|\n]*?)\|/g, '$1\n|');
+
+  // Ensure heading (#, ##, ###, etc.) has a newline before it
+  text = text.replace(/([^\n])(?=(#{1,6}\s))/g, '$1\n');
+
+  // Add newline between bullets that are concatenated on the same line
+  text = text.replace(/(- [^-*\n]+?)(?=- )/g, '$1\n');
+
+  // Step 1: ensure there is a space between DV and Minerals if stuck together
+  text = text.replace(/DV(?=Minerals:)/g, 'DV ');
+
+  // Step 2: insert a newline before Minerals: if it’s not already on a new line
+  text = text.replace(/([^\n])\s*(Minerals:)/g, '$1\n\n$2');
+
+  // Remove setext-style heading underlines
   text = text.replace(/^\s*[=-]{3,}\s*$/gm, '');
-  // Remove trailing inline '=====' or '---' after text
   text = text.replace(/([^\n])\s*[=-]{3,}(?=\s*#|$)/g, '$1');
 
-  // Ensure bold headings have blank lines around them
-  text = text.replace(/\*\*([^*]+?:)\*\*/g, '\n\n**$1**\n\n');
+  // Ensure bold headings have blank lines around them (with or without colon)
+  text = text.replace(/(\*\*[^*]+\*\*)/g, '\n$1\n');
+
+  // Add newline after bold heading if table starts immediately after
+  text = text.replace(/(\*\*[^*]+\*\*:?.*?)\|/g, '$1\n|');
 
   // Add blank line after markdown tables
   text = text.replace(/((?:^|\n)(?:\|.+\|\n)+)([^|\n])/gm, '$1\n$2');
 
-  // Handle concatenated numbered lists - split when a number+period follows text
+  // Separate back-to-back bold headings properly
+  text = text.replace(/(\*\*[^*]+\*\*)(?=\*\*[^*]+\*\*)/g, '$1\n');
+
+  // Handle concatenated numbered lists
   text = text.replace(/([a-zA-Z])(\d+\.\s)/g, '$1\n$2');
 
-  // Fix concatenated text (split on lowercase followed immediately by uppercase)
+  // **NEW: Fix concatenated bullet points at root level**
+  text = text.replace(/(\*\s[^\n*]+)(\*\s)/g, '$1\n$2');
+  
+  // **NEW: Fix concatenated bullet points after numbered items**
+  text = text.replace(/(\d+\.\s\*\*[^*]+\*\*[^\n]+)(\*\s)/g, '$1\n$2');
+  
+  // **NEW: Separate lowercase word followed immediately by asterisk (bullet)**
+  text = text.replace(/([a-z)])(\*\s)/g, '$1\n$2');
+  
+  // **NEW: Fix text concatenated after bullet points (like "EdamamePlease")**
+  text = text.replace(/([a-z)])([A-Z][a-z])/g, '$1\n\n$2');
+
+  // Fix concatenated text (split on lowercase followed by uppercase)
   text = text.replace(/([a-z])([A-Z])/g, '$1\n\n$2');
+
+  // Add space after lowercase letters or commas followed by numbers
+  text = text.replace(/([a-z,:])([0-9])/g, '$1 $2');
+
+  // Add blank line after numbered list items if followed by a heading
+  text = text.replace(/(\d+\..+)(\n)(\*\*[^*]+\*\*)/g, '$1\n\n$3');
+
+  // Fix text concatenated on same line between two bold headings
+  // E.g., "**Time:**\n5 minutes\n**Next**" should become "**Time:**\n5 minutes\n\n**Next**"
+  text = text.replace(/(\*\*[^*]+\*\*[:\s]*\n)([^\n]+\n)(\*\*[^*]+\*\*)/g, '$1$2\n$3');
 
   // Remove duplicate empty lines
   text = text.replace(/\n{3,}/g, '\n\n');
 
-  // Trim leading/trailing spaces
+  // Trim
   return text.trim();
 }
+
 
 // Component to render cleaned markdown
 const MarkdownRenderer = ({ content }: { content: string }) => {

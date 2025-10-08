@@ -5,26 +5,24 @@
   color: hsl(var(--foreground));
   
   h1 {
-    font-size: 3.5rem;
-    font-weight: 900;
-    margin-bottom: 1.5rem;
-    margin-top: 2.5rem;
+    font-size: 0.90rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
     color: hsl(var(--foreground));
-    border-bottom: 1px solid hsl(var(--border));
-    padding-bottom: 0.5rem;
   }
   
   h2 {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 1.25rem;
-    margin-top: 2rem;
+    font-size: 0.90rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
     color: hsl(var(--foreground));
   }
   
   h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-size: 0.90rem;
+    font-weight: 700;
     margin-bottom: 0.5rem;
     margin-top: 1rem;
     color: hsl(var(--foreground));
@@ -58,9 +56,9 @@
   strong {
     font-weight: 700;
     color: hsl(var(--foreground));
-    font-size: 1.2rem;
-    display: block;
-    margin: 1.2em 0 0.5em 0;
+    font-size: 0.90rem;
+    display: inline;
+    margin: 0;
   }
   
   em {
