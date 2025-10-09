@@ -124,12 +124,14 @@ export const ChatProvider = ({ children }: any) => {
   in a single table (include at least 10). Always include some vitamins in this single table 
   even if they are small in amount.
 
-  If any of the provided ingredients conflict with the user's selected dietary preferences or restrictions 
-  (for example, sugar for diabetes), DO NOT generate or modify the recipe yet. 
+  If the user has provided dietary preferences or restrictions, and any of the provided ingredients conflict 
+  with those preferences (for example, sugar for diabetes), DO NOT generate or modify the recipe yet. 
   Do not replace or remove the conflicting ingredients automatically. 
   Instead, list each conflicting ingredient and suggest at least two suitable alternative ingredients for each conflict. 
   Ask the user to select one alternative for each conflicting ingredient. 
   Wait for the user's selection before generating the recipe. 
+
+  If no dietary preference is mentioned, or if there are no conflicting ingredients, generate the recipe directly using the provided ingredients.
 
   Once the user selects the alternatives, use those in the recipe and add a note 
   below the ingredients table in this format: 
@@ -201,7 +203,7 @@ export const ChatProvider = ({ children }: any) => {
         : "";
 
     // Add ingredients and dietary preferences to the prompt
-    const defaultQuery = "Generate a recipe based on these available ingredient and diatery preferences";
+    const defaultQuery = "Generate a recipe based on these available ingredient and dietary preferences";
     const usedPrompt = prompt && prompt.trim() ? prompt : defaultQuery;
     const ingredientsSummary = ingredients.length > 0 
       ? `\nAvailable Ingredients: ${ingredients.join(", ")}`

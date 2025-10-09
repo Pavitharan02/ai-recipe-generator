@@ -19,7 +19,7 @@ function cleanLLMMarkdown(raw: string) {
   text = text.replace(/(^\* [^*\n]+[.!?)])\s+(?=[A-Z0-9(])/gm, '$1\n\n');
 
   // Add space after colon in bold heading if followed by text (not table)
-  text = text.replace(/(\*\*[^*]+\*\*):([^\n|])/g, '$1: $2');
+  text = text.replace(/(\*\*[^*]+\*\*):([^\s\n|])/g, '$1: $2');
 
   // Split ## heading if it contains a table (|), so heading is separate
   text = text.replace(/(##[^\|\n]*?)\|/g, '$1\n|');
@@ -27,8 +27,25 @@ function cleanLLMMarkdown(raw: string) {
   // Ensure heading (#, ##, ###, etc.) has a newline before it
   text = text.replace(/([^\n])(?=(#{1,6}\s))/g, '$1\n');
 
+  // Prevent numbered list markers from sticking to ATX headings (e.g., "### Heading1.")
+  text = text.replace(/(#{1,6}\s[^\n]+?)(\d+\.\s)/g, '$1\n\n$2');
+
   // Add newline between bullets that are concatenated on the same line
   text = text.replace(/(- [^-*\n]+?)(?=- )/g, '$1\n');
+
+  // Ensure tables always start on their own block when stuck to preceding text
+  text = text.replace(/([^\n|])\n(?=\|[^\n]+\|)/g, '$1\n\n');
+  text = text.replace(/\|([^\n]+\|[^\n]*\n(?:\|[^\n]+\|[^\n]*\n?)*)/g, (match, tableBody, offset, full) => {
+    const start = offset === 0 ? 0 : full.lastIndexOf('\n', offset) + 1;
+    const isLineStart = offset === start;
+    if (!isLineStart) {
+      return `\n|${tableBody}`;
+    }
+    return match;
+  });
+
+  // Remove blank lines inserted between table rows
+  text = text.replace(/(?<=\|[^\n]*\|)\n\s*\n(?=\|[^\n]*\|)/g, '\n');
 
   // Step 1: ensure there is a space between DV and Minerals if stuck together
   text = text.replace(/DV(?=Minerals:)/g, 'DV ');
@@ -40,11 +57,16 @@ function cleanLLMMarkdown(raw: string) {
   text = text.replace(/^\s*[=-]{3,}\s*$/gm, '');
   text = text.replace(/([^\n])\s*[=-]{3,}(?=\s*#|$)/g, '$1');
 
-  // Ensure bold headings have blank lines around them (with or without colon)
-  text = text.replace(/(\*\*[^*]+\*\*)/g, '\n$1\n');
+  // Ensure bold headings at the start of a line have blank lines around them without breaking list items
+  text = text.replace(/(^|\n)(\*\*[^*\n]+\*\*:?(?=\s|$|[0-9]))/g, (match, prefix, bold) => {
+    if (prefix === "") {
+      return `${bold}\n`;
+    }
+    return `${prefix}\n${bold}\n`;
+  });
 
-  // Add newline after bold heading if table starts immediately after
-  text = text.replace(/(\*\*[^*]+\*\*:?.*?)\|/g, '$1\n|');
+  // Add newline after bold heading if table starts immediately after (but not if bold is inside table)
+  text = text.replace(/(?<!\|)(\*\*[^*]+\*\*:?.*?)\|/g, '$1\n|');
 
   // Add blank line after markdown tables
   text = text.replace(/((?:^|\n)(?:\|.+\|\n)+)([^|\n])/gm, '$1\n$2');
@@ -52,20 +74,31 @@ function cleanLLMMarkdown(raw: string) {
   // Separate back-to-back bold headings properly
   text = text.replace(/(\*\*[^*]+\*\*)(?=\*\*[^*]+\*\*)/g, '$1\n');
 
-  // Handle concatenated numbered lists
-  text = text.replace(/([a-zA-Z])(\d+\.\s)/g, '$1\n$2');
+  // Handle concatenated numbered lists that follow sentence-ending punctuation (e.g., "1. ... 2. ...")
+  text = text.replace(/([.!?])\s*(\d+\.\s)/g, '$1\n\n$2');
 
   // **NEW: Fix concatenated bullet points at root level**
   text = text.replace(/(\*\s[^\n*]+)(\*\s)/g, '$1\n$2');
+  text = text.replace(/(\+\s[^\n+]+)(\+\s)/g, '$1\n$2');
+    // Indent plus bullets to show sublist visually (2 spaces)
+    text = text.replace(/(^|\n)(\+\s)/g, '$1  $2');
   
   // **NEW: Fix concatenated bullet points after numbered items**
   text = text.replace(/(\d+\.\s\*\*[^*]+\*\*[^\n]+)(\*\s)/g, '$1\n$2');
   
   // **NEW: Separate lowercase word followed immediately by asterisk (bullet)**
   text = text.replace(/([a-z)])(\*\s)/g, '$1\n$2');
+  // **NEW: Separate lowercase word followed immediately by plus (nested bullet)**
+  text = text.replace(/([a-z)])(\+\s)/g, '$1\n$2');
   
   // **NEW: Fix text concatenated after bullet points (like "EdamamePlease")**
   text = text.replace(/([a-z)])([A-Z][a-z])/g, '$1\n\n$2');
+
+  // Ensure plus bullets are indented to represent sublists when not already indented
+  text = text.replace(/(^|\n)([ \t]*)\+(\s)/g, (match, prefix, whitespace, spaceAfter) => {
+    const indentation = whitespace.length >= 2 ? whitespace : '  ';
+    return `${prefix}${indentation}+${spaceAfter}`;
+  });
 
   // Fix concatenated text (split on lowercase followed by uppercase)
   text = text.replace(/([a-z])([A-Z])/g, '$1\n\n$2');
@@ -77,15 +110,25 @@ function cleanLLMMarkdown(raw: string) {
   text = text.replace(/(\d+\..+)(\n)(\*\*[^*]+\*\*)/g, '$1\n\n$3');
 
   // Fix text concatenated on same line between two bold headings
-  // E.g., "**Time:**\n5 minutes\n**Next**" should become "**Time:**\n5 minutes\n\n**Next**"
   text = text.replace(/(\*\*[^*]+\*\*[:\s]*\n)([^\n]+\n)(\*\*[^*]+\*\*)/g, '$1$2\n$3');
 
+  // Restore paragraph break after numbered items when followed by new sentences
+  text = text.replace(/(\d+\.\s[^\n]+?\.)\s+(?=[A-Z(])/g, '$1\n\n');
+
   // **NEW: Add paragraph break after underscores followed by uppercase letter (new sentence)**
-  // This handles cases like "_____ Once I receive" -> "_____ \n\nOnce I receive"
   text = text.replace(/(_+)(\s*)([A-Z][a-z])/g, '$1\n\n$3');
 
   // **NEW: Add paragraph break after underscores followed by parenthesis (Note:, etc.)**
   text = text.replace(/(_+)(\s*)(\([A-Z])/g, '$1\n\n$3');
+
+  // Fix cases where bold markers get split across lines (e.g., "**Heading" + newline + "**")
+  text = text.replace(/\*\*([^\n*]+)\n+\*\*/g, (_, heading) => `**${heading}**\n\n`);
+
+  // Ensure recipe headings start on a new line
+  text = text.replace(/([^\n])\*\*(Recipe Title|Ingredients|Cooking Instructions|Estimated Cooking Time|Nutritional Information|Alternative Ingredients|Conflicting Ingredient)/g, '$1\n\n**$2');
+
+  // Add newline before numbered list if stuck to previous text
+  text = text.replace(/([a-z])\s*(\d+[.)]\s)/g, '$1\n\n$2');
 
   // Remove duplicate empty lines
   text = text.replace(/\n{3,}/g, '\n\n');
