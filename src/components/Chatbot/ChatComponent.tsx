@@ -24,8 +24,8 @@ const HtmlRenderer = ({ content }: { content: string }) => {
     // Fix concatenated text with numbers (e.g., "for2-3" -> "for 2-3", "Time:10" -> "Time: 10")
     .replace(/([a-z])(\d)/g, '$1 $2')
     .replace(/([a-z]):(\d)/g, '$1: $2')
-    // Handle markdown bold (**text**)
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  // Handle markdown bold (**text**) and always place on a new line
+  .replace(/\*\*([^*]+)\*\*/g, '<p><strong>$1</strong></p>')
     // Handle markdown italic (*text*)
     .replace(/(^|\s)\*([^*]+)\*(?=\s|$)/g, '$1<em>$2</em>')
     // Handle markdown bullets at start of line
