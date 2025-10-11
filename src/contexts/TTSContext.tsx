@@ -52,16 +52,20 @@ export const TTSProvider = ({ children }: { children: React.ReactNode }) => {
       // Stop any currently playing speech
       stop();
 
-      // Clean the text for TTS (remove markdown formatting)
-      const cleanText = text
-        .replace(/[#*`_~[\]]/g, '') // Remove markdown formatting
+      // Clean the text for TTS (remove HTML tags and extract text content)
+      let cleanText = text;
+      
+      // Create a temporary DOM element to parse HTML and extract text
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = text;
+      
+      // Extract text content (this automatically removes all HTML tags)
+      cleanText = tempDiv.textContent || tempDiv.innerText || '';
+      
+      // Additional cleaning
+      cleanText = cleanText
         .replace(/\n+/g, ' ') // Replace newlines with spaces
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .replace(/\*\*/g, '') // Remove bold markdown
-        .replace(/\*/g, '') // Remove italic markdown
-        .replace(/`/g, '') // Remove code markdown
-        .replace(/#{1,6}\s*/g, '') // Remove heading markdown
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Replace links with text only
         .trim();
 
       if (!cleanText) return;

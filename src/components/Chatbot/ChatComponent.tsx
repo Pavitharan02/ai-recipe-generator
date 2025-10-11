@@ -1,177 +1,71 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useChatContext } from "@/contexts/ChatContext";
-import { cn } from "@/lib/utils";
-import { ArrowUp, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { ChatInput } from "./ChatInput";
+import { cn } from "@/lib/utils";
 import { MobileRecipePanel } from "@/components/Recipe/MobileRecipePanel";
 import { TTSButton } from "@/components/common/TTSButton";
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import { Loader2, ArrowUp } from "lucide-react";
+import { ChatInput } from "./ChatInput";
 
-function cleanLLMMarkdown(raw: string) {
-  let text = raw;
+
+// Component to render HTML content with proper styling
+const HtmlRenderer = ({ content }: { content: string }) => {
+  console.log('Raw HTML input:', content);
   
-  // Ensure line break only after bullet list items, not numbered lists
-  text = text.replace(/(^\* [^*\n]+[.!?)])\s+(?=[A-Z0-9(])/gm, '$1\n\n');
-
-  // Add space after colon in bold heading if followed by text (not table)
-  text = text.replace(/(\*\*[^*]+\*\*):([^\s\n|])/g, '$1: $2');
-
-  // Split ## heading if it contains a table (|), so heading is separate
-  text = text.replace(/(##[^\|\n]*?)\|/g, '$1\n|');
-
-  // Ensure heading (#, ##, ###, etc.) has a newline before it
-  text = text.replace(/([^\n])(?=(#{1,6}\s))/g, '$1\n');
-
-  // Prevent numbered list markers from sticking to ATX headings (e.g., "### Heading1.")
-  text = text.replace(/(#{1,6}\s[^\n]+?)(\d+\.\s)/g, '$1\n\n$2');
-
-  // Add newline between bullets that are concatenated on the same line
-  text = text.replace(/(- [^-*\n]+?)(?=- )/g, '$1\n');
-
-  // Ensure tables always start on their own block when stuck to preceding text
-  text = text.replace(/([^\n|])\n(?=\|[^\n]+\|)/g, '$1\n\n');
-  text = text.replace(/\|([^\n]+\|[^\n]*\n(?:\|[^\n]+\|[^\n]*\n?)*)/g, (match, tableBody, offset, full) => {
-    const start = offset === 0 ? 0 : full.lastIndexOf('\n', offset) + 1;
-    const isLineStart = offset === start;
-    if (!isLineStart) {
-      return `\n|${tableBody}`;
-    }
-    return match;
-  });
-
-  // Remove blank lines inserted between table rows
-  text = text.replace(/(?<=\|[^\n]*\|)\n\s*\n(?=\|[^\n]*\|)/g, '\n');
-
-  // Step 1: ensure there is a space between DV and Minerals if stuck together
-  text = text.replace(/DV(?=Minerals:)/g, 'DV ');
-
-  // Step 2: insert a newline before Minerals: if it’s not already on a new line
-  text = text.replace(/([^\n])\s*(Minerals:)/g, '$1\n\n$2');
-
-  // Remove setext-style heading underlines
-  text = text.replace(/^\s*[=-]{3,}\s*$/gm, '');
-  text = text.replace(/([^\n])\s*[=-]{3,}(?=\s*#|$)/g, '$1');
-
-  // Ensure bold headings at the start of a line have blank lines around them without breaking list items
-  text = text.replace(/(^|\n)(\*\*[^*\n]+\*\*:?(?=\s|$|[0-9]))/g, (match, prefix, bold) => {
-    if (prefix === "") {
-      return `${bold}\n`;
-    }
-    return `${prefix}\n${bold}\n`;
-  });
-
-  // Add newline after bold heading if table starts immediately after (but not if bold is inside table)
-  text = text.replace(/(?<!\|)(\*\*[^*]+\*\*:?.*?)\|/g, '$1\n|');
-
-  // Add blank line after markdown tables
-  text = text.replace(/((?:^|\n)(?:\|.+\|\n)+)([^|\n])/gm, '$1\n$2');
-
-  // Separate back-to-back bold headings properly
-  text = text.replace(/(\*\*[^*]+\*\*)(?=\*\*[^*]+\*\*)/g, '$1\n');
-
-  // Handle concatenated numbered lists that follow sentence-ending punctuation (e.g., "1. ... 2. ...")
-  text = text.replace(/([.!?])\s*(\d+\.\s)/g, '$1\n\n$2');
-
-  // **NEW: Fix concatenated bullet points at root level**
-  text = text.replace(/(\*\s[^\n*]+)(\*\s)/g, '$1\n$2');
-  text = text.replace(/(\+\s[^\n+]+)(\+\s)/g, '$1\n$2');
-    // Indent plus bullets to show sublist visually (2 spaces)
-    text = text.replace(/(^|\n)(\+\s)/g, '$1  $2');
+  // Clean up common HTML issues
+  let cleanedContent = content
+    // Convert <b> tags to <strong> tags for consistency
+    .replace(/<b>/g, '<strong>')
+    .replace(/<\/b>/g, '</strong>')
+    // Fix mismatched table tags (th with /td or td with /th)
+    .replace(/<th>([^<]+)<\/td>/g, '<td>$1</td>')
+    .replace(/<td>([^<]+)<\/th>/g, '<td>$1</td>')
+    // Fix concatenated text with numbers (e.g., "for2-3" -> "for 2-3", "Time:10" -> "Time: 10")
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .replace(/([a-z]):(\d)/g, '$1: $2')
+    // Handle markdown bold (**text**)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Handle markdown italic (*text*)
+    .replace(/(^|\s)\*([^*]+)\*(?=\s|$)/g, '$1<em>$2</em>')
+    // Handle markdown bullets at start of line
+    .replace(/^\*\s([^\n]+)/gm, '<li>$1</li>')
+    // Add space after colons if missing
+    .replace(/:(\S)/g, ': $1')
+    // Add proper spacing after closing strong/bold tags when followed by text
+    .replace(/<\/strong>([A-Z][a-z])/g, '</strong>\n\n<p>$1')
+    // Wrap orphan text (text not in any tag) in paragraph tags
+    .replace(/(<\/[^>]+>)\s*\n*([A-Z][^<]+)/g, '$1\n\n<p>$2</p>');
+  // If any <li> tags were added, wrap them in <ul> if not already inside a list
+  cleanedContent = cleanedContent.replace(/((<li>[^<]+<\/li>\s*)+)/g, '<ul>$1</ul>');
+    // Remove empty <th> tags
+    cleanedContent = cleanedContent.replace(/<th>\s*<\/th>/g, '');
+    // Convert <th> in non-header rows to <td>
+    cleanedContent = cleanedContent.replace(/(<table>\s*<tr>.*?<\/tr>)([\s\S]*?)(<\/table>)/g, (match, header, body, end) => {
+      return header + body.replace(/<th>/g, '<td>').replace(/<\/th>/g, '</td>') + end;
+    });
   
-  // **NEW: Fix concatenated bullet points after numbered items**
-  text = text.replace(/(\d+\.\s\*\*[^*]+\*\*[^\n]+)(\*\s)/g, '$1\n$2');
-  
-  // **NEW: Separate lowercase word followed immediately by asterisk (bullet)**
-  text = text.replace(/([a-z)])(\*\s)/g, '$1\n$2');
-  // **NEW: Separate lowercase word followed immediately by plus (nested bullet)**
-  text = text.replace(/([a-z)])(\+\s)/g, '$1\n$2');
-  
-  // **NEW: Fix text concatenated after bullet points (like "EdamamePlease")**
-  text = text.replace(/([a-z)])([A-Z][a-z])/g, '$1\n\n$2');
+  // Add CSS classes to HTML elements for proper styling
+  let styledContent = cleanedContent
+    // Style tables
+    .replace(/<table>/g, '<table class="border-collapse border border-gray-300 my-4 w-full">')
+    .replace(/<th>/g, '<th class="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left">')
+    .replace(/<td>/g, '<td class="border border-gray-300 px-4 py-2">')
+    // Style headers (make them bold by default)
+    .replace(/<h3>/g, '<h3 class="font-bold text-lg mb-2 mt-6">')
+    .replace(/<h2>/g, '<h2 class="font-bold text-xl mb-2 mt-6">')
+    .replace(/<h1>/g, '<h1 class="font-bold text-2xl mb-3 mt-6">')
+    // Style lists
+    .replace(/<ol>/g, '<ol class="list-decimal pl-6 my-3 space-y-1 mb-6">')
+    .replace(/<ul>/g, '<ul class="list-disc pl-6 my-3 space-y-1 mb-6">')
+    .replace(/<li>/g, '<li class="mb-1">')
+    // Style paragraphs
+    .replace(/<p>/g, '<p class="mb-3">')
+    // Style strong tags
+    .replace(/<strong>/g, '<strong class="font-bold">');
 
-  // Ensure plus bullets are indented to represent sublists when not already indented
-  text = text.replace(/(^|\n)([ \t]*)\+(\s)/g, (match, prefix, whitespace, spaceAfter) => {
-    const indentation = whitespace.length >= 2 ? whitespace : '  ';
-    return `${prefix}${indentation}+${spaceAfter}`;
-  });
-
-  // Fix concatenated text (split on lowercase followed by uppercase)
-  text = text.replace(/([a-z])([A-Z])/g, '$1\n\n$2');
-
-  // Add space after lowercase letters or commas followed by numbers
-  text = text.replace(/([a-z,:])([0-9])/g, '$1 $2');
-
-  // Add blank line after numbered list items if followed by a heading
-  text = text.replace(/(\d+\..+)(\n)(\*\*[^*]+\*\*)/g, '$1\n\n$3');
-
-  // Fix text concatenated on same line between two bold headings
-  text = text.replace(/(\*\*[^*]+\*\*[:\s]*\n)([^\n]+\n)(\*\*[^*]+\*\*)/g, '$1$2\n$3');
-
-  // Restore paragraph break after numbered items when followed by new sentences
-  text = text.replace(/(\d+\.\s[^\n]+?\.)\s+(?=[A-Z(])/g, '$1\n\n');
-
-  // **NEW: Add paragraph break after underscores followed by uppercase letter (new sentence)**
-  text = text.replace(/(_+)(\s*)([A-Z][a-z])/g, '$1\n\n$3');
-
-  // **NEW: Add paragraph break after underscores followed by parenthesis (Note:, etc.)**
-  text = text.replace(/(_+)(\s*)(\([A-Z])/g, '$1\n\n$3');
-
-  // Fix cases where bold markers get split across lines (e.g., "**Heading" + newline + "**")
-  text = text.replace(/\*\*([^\n*]+)\n+\*\*/g, (_, heading) => `**${heading}**\n\n`);
-
-  // Ensure recipe headings start on a new line
-  text = text.replace(/([^\n])\*\*(Recipe Title|Ingredients|Cooking Instructions|Estimated Cooking Time|Nutritional Information|Alternative Ingredients|Conflicting Ingredient)/g, '$1\n\n**$2');
-
-  // Add newline before numbered list if stuck to previous text
-  text = text.replace(/([a-z])\s*(\d+[.)]\s)/g, '$1\n\n$2');
-
-  // Remove duplicate empty lines
-  text = text.replace(/\n{3,}/g, '\n\n');
-
-  // Trim
-  return text.trim();
-}
-
-
-// Component to render cleaned markdown
-const MarkdownRenderer = ({ content }: { content: string }) => {
-  const cleanedContent = cleanLLMMarkdown(content);
-  
-  // Debug: print raw text
-  console.log('Raw content:', content);
-  console.log('Cleaned content:', cleanedContent);
-  
   return (
-    <div className="markdown-content">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeSanitize]}
-        components={{
-          table: ({ children }) => (
-            <table className="border-collapse border border-gray-300 my-4">
-              {children}
-            </table>
-          ),
-          th: ({ children }) => (
-            <th className="border border-gray-300 px-4 py-2 bg-gray-100">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-gray-300 px-4 py-2">
-              {children}
-            </td>
-          ),
-        }}
-      >
-        {cleanedContent}
-      </ReactMarkdown>
-    </div>
+    <div className="html-content text-sm leading-relaxed space-y-2" dangerouslySetInnerHTML={{ __html: styledContent }} />
   );
 };
 
@@ -226,7 +120,7 @@ export const ChatComponent = () => {
                     </div>
                   ) : (
                       <div className="text-sm">
-                        <MarkdownRenderer content={entry.content} />
+                        <HtmlRenderer content={entry.content} />
                       </div>
                   )}
                   {entry.role === "assistant" && (
@@ -261,7 +155,7 @@ export const ChatComponent = () => {
                 <Card className="max-w-[80%] border-none shadow-none w-fit">
                   <CardContent className="p-4">
                     <div className="text-sm">
-                      <MarkdownRenderer content={responseStream} />
+                      <HtmlRenderer content={responseStream} />
                     </div>
                   </CardContent>
                 </Card>
